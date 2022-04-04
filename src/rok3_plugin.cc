@@ -323,7 +323,7 @@ VectorXd rotToEuler(MatrixXd rotMat){
 
 
 void Practice()
-{
+{   
     VectorXd q=VectorXd::Zero(6);
     MatrixXd T0E(4,4);
     MatrixXd C0E(3,3);
@@ -340,6 +340,8 @@ void Practice()
     
     std::cout <<"T0E = " << T0E << std::endl;
     jointToTransform01(q);
+    
+    std::cout <<"Hello world" << endl;
 }
 
 
