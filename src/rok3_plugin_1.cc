@@ -306,7 +306,7 @@ void gazebo::rok3_plugin::GetjointData()
     //        cout << "joint[" << j <<"]="<<joint[j].actualDegree<< endl;
     //    }
 
-}
+} 
 
 void gazebo::rok3_plugin::initializeJoint()
 {
