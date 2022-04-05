@@ -144,163 +144,105 @@ namespace gazebo
 //* Practice 2. Forward Kinematics
 //-----------------------------------------------------------------//
 
-MatrixXd jointToTransform01(VectorXd q){
-    
-    // Frame 0 to Frame 1 : C_01 = C_z(q0)
-    
+MatrixXd getTransformI0(){
     MatrixXd tmp_m(4,4);
-    Vector3d r = {0,0.105,-0.1512};
-    double q1 = q(0);
     
-    tmp_m(0,0) = cos(q1);   tmp_m(0,1) = -sin(q1);  tmp_m(0,2) = 0; tmp_m(0,3) = r(0);
-    tmp_m(1,0) = sin(q1);   tmp_m(1,1) =  cos(q1);  tmp_m(1,2) = 0; tmp_m(1,3) = r(1);
-    tmp_m(2,0) = 0;         tmp_m(2,1) = 0;         tmp_m(2,2) = 1; tmp_m(2,3) = r(2);
-    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;         tmp_m(3,2) = 0; tmp_m(3,3) = 1;
-
-    //std::cout << tmp_m << endl;
-    
-    return tmp_m;
-}
-
-MatrixXd jointToTransform12(VectorXd q){
-    
-    // Frame 0 to Frame 1 : C_01 = C_z(q0)
-    
-    MatrixXd tmp_m(4,4);
-    Vector3d r = {0,0,0};
-    double qq = q(1);
-    
-    tmp_m(0,0) = 1; tmp_m(0,1) = 0;         tmp_m(0,2) = 0;         tmp_m(0,3) = r(0);
-    tmp_m(1,0) = 0; tmp_m(1,1) = cos(qq);   tmp_m(1,2) = -sin(qq);  tmp_m(1,3) = r(1);
-    tmp_m(2,0) = 0; tmp_m(2,1) = sin(qq);   tmp_m(2,2) = cos(qq);   tmp_m(2,3) = r(2);
-    tmp_m(3,0) = 0; tmp_m(3,1) = 0;         tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
-
-    //std::cout << tmp_m << endl;
-    
-    return tmp_m;
-}
-
-MatrixXd jointToTransform23(VectorXd q){
-    
-    // Frame 0 to Frame 1 : C_01 = C_z(q0)
-    
-    MatrixXd tmp_m(4,4);
-    Vector3d r = {0,0,0};
-    double qq = q(2);
-    
-    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);   tmp_m(0,3) = r(0);
-    tmp_m(1,0) = 0;         tmp_m(1,1) = 1;     tmp_m(1,2) = 0;         tmp_m(1,3) = r(1);
-    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = r(2);
-    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
-
-    //std::cout << tmp_m << endl;
-    
-    return tmp_m;
-}
-
-MatrixXd jointToTransform34(VectorXd q){
-    
-    // Frame 0 to Frame 1 : C_01 = C_z(q0)
-    
-    MatrixXd tmp_m(4,4);
-    Vector3d r = {0,0,-0.35};
-    double qq = q(3);
-    
-    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);   tmp_m(0,3) = r(0);
-    tmp_m(1,0) = 0;         tmp_m(1,1) = 1;     tmp_m(1,2) = 0;         tmp_m(1,3) = r(1);
-    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = r(2);
-    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
-
-    //std::cout << tmp_m << endl;
-    
-    return tmp_m;
-}
-
-MatrixXd jointToTransform45(VectorXd q){
-    
-    // Frame 0 to Frame 1 : C_01 = C_z(q0)
-    
-    MatrixXd tmp_m(4,4);
-    Vector3d r = {0,0,-0.35};
-    double qq = q(4);
-    
-    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);   tmp_m(0,3) = r(0);
-    tmp_m(1,0) = 0;         tmp_m(1,1) = 1;     tmp_m(1,2) = 0;         tmp_m(1,3) = r(1);
-    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = r(2);
-    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
-
-    //std::cout << tmp_m << endl;
-    
-    return tmp_m;
-}
-
-MatrixXd jointToTransform56(VectorXd q){
-    
-    // Frame 0 to Frame 1 : C_01 = C_z(q0)
-    
-    MatrixXd tmp_m(4,4);
-    Vector3d r = {0,0,0};
-    double qq = q(5);
-    
-    tmp_m(0,0) = 1; tmp_m(0,1) = 0;         tmp_m(0,2) = 0;         tmp_m(0,3) = r(0);
-    tmp_m(1,0) = 0; tmp_m(1,1) = cos(qq);   tmp_m(1,2) = -sin(qq);  tmp_m(1,3) = r(1);
-    tmp_m(2,0) = 0; tmp_m(2,1) = sin(qq);   tmp_m(2,2) = cos(qq);   tmp_m(2,3) = r(2);
-    tmp_m(3,0) = 0; tmp_m(3,1) = 0;         tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
-
-    //std::cout << tmp_m << endl;
-    
-    return tmp_m;
-}
-
-MatrixXd getTransform6E(){
-    MatrixXd tmp_m(4,4);
-    Vector3d r = {0,0,-0.09};
-
-    tmp_m = MatrixXd::Identity(4,4);
-    
-    tmp_m << 1, 0, 0, 0, \
-             0, 1, 0, 0, \
-             0, 0, 1, 0, \
+    tmp_m << 1, 0, 0, 0,\
+             0, 1, 0, 0,\
+             0, 0, 1, 0,\
              0, 0, 0, 1;
     
-    tmp_m(0,0) = 1; tmp_m(0,1) = 0; tmp_m(0,2) = 0; tmp_m(0,3) = r(0);
-    tmp_m(1,0) = 0; tmp_m(1,1) = 1; tmp_m(1,2) = 0; tmp_m(1,3) = r(1);
-    tmp_m(2,0) = 0; tmp_m(2,1) = 0; tmp_m(2,2) = 1; tmp_m(2,3) = r(2);
-    tmp_m(3,0) = 0; tmp_m(3,1) = 0; tmp_m(3,2) = 0; tmp_m(3,3) = 1;
-
     return tmp_m;
 }
 
 
-VectorXd jointToPosition(VectorXd q){
+MatrixXd jointToTransform01(Vector3d q){
+    
+    
+    MatrixXd tmp_m(4,4);
+    float qq = q(0);
+    float l0 = 1;
+    
+    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = 0;
+    tmp_m(1,0) = 0;         tmp_m(1,1) = 0;     tmp_m(1,2) = 0;         tmp_m(1,3) = 0;
+    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = l0;
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
+
+    //std::cout << tmp_m << endl;
+    
+    return tmp_m;
+}
+
+
+
+MatrixXd jointToTransform12(Vector3d q){
+    
+    
+    MatrixXd tmp_m(4,4);
+    float qq = q(1);
+    float l1 = 1;
+    
+    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = 0;
+    tmp_m(1,0) = 0;         tmp_m(1,1) = 0;     tmp_m(1,2) = 0;         tmp_m(1,3) = 0;
+    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = l1;
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
+
+    
+    return tmp_m;
+}
+
+
+MatrixXd jointToTransform23(Vector3d q){
+    
+    MatrixXd tmp_m(4,4);
+    float qq = q(2);
+    float l2 = 1;
+    
+    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = 0;
+    tmp_m(1,0) = 0;         tmp_m(1,1) = 0;     tmp_m(1,2) = 0;         tmp_m(1,3) = 0;
+    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = l2;
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
+
+    
+    return tmp_m;
+}
+
+MatrixXd getTransform3E(){
+    MatrixXd tmp_m(4,4);
+    float l3 = 1;
+    tmp_m << 1, 0, 0, 0,\
+             0, 1, 0, 0,\
+             0, 0, 1, l3,\
+             0, 0, 0, 1;
+    
+    return tmp_m;
+}
+
+VectorXd jointToPosition(Vector3d q){
     VectorXd tmp_v = VectorXd::Zero(3);
     MatrixXd tmp_m(4,4);
     
-    tmp_m = jointToTransform01(q)* 
+    tmp_m = getTransformI0()*
+            jointToTransform01(q)* 
             jointToTransform12(q)* 
             jointToTransform23(q)* 
-            jointToTransform34(q)* 
-            jointToTransform45(q)* 
-            jointToTransform56(q)* 
-            getTransform6E();
+            getTransform3E();
         
     tmp_v = tmp_m.block(0,3,3,1);
     
+    
     return tmp_v;
 }
-
-MatrixXd jointToRotMat(VectorXd q){
+MatrixXd jointToRotMat(Vector3d q){
     MatrixXd tmp_m(3,3);
     MatrixXd T_IE(4,4);
     
-    T_IE =  jointToTransform01(q)* 
+    T_IE =  getTransformI0()*
+            jointToTransform01(q)* 
             jointToTransform12(q)* 
             jointToTransform23(q)* 
-            jointToTransform34(q)* 
-            jointToTransform45(q)* 
-            jointToTransform56(q)* 
-            getTransform6E();
-    
+            getTransform3E();
+
     tmp_m = T_IE.block(0,0,3,3);
     
     return tmp_m;
@@ -310,40 +252,55 @@ VectorXd rotToEuler(MatrixXd rotMat){
     // ZYX Euler Angle - yaw-pitch-roll
     VectorXd tmp_v(3);
     
-        tmp_v(0) = atan2(rotMat(1,0),rotMat(0,0));
+    tmp_v(0) = atan2(rotMat(1,0),rotMat(0,0));
     tmp_v(1) = atan2(-rotMat(2,0),sqrt(rotMat(2,1)*rotMat(2,1)+rotMat(2,2)*rotMat(2,2)));
-    tmp_v(2) = atan2(rotMat(2,1),rotMat(2,2));
-            
-    std::cout << tmp_v << endl;
-    
-    return tmp_v;
-    
-}
+    tmp_v(2) = atan2(rotMat(2,1),rotMat(2,2));         
 
+    return tmp_v;
+}
 
 
 void Practice()
-{   
-    VectorXd q=VectorXd::Zero(6);
+{
+    // Forward Kinematics 
+    // Pratice_1
+    MatrixXd T_I0(4,4), T_01(4,4), T_12(4,4), T_23(4,4), T_3E(4,4), T_IE(4,4);
+    Vector3d q = {30,30,30}; q = q*PI/180;
+    VectorXd jointToPossition(Vector3d q);
+    MatrixXd jointToRotMat(Vector3d q);
+    VectorXd rotToEuler(MatrixXd q);
+
+    
+
+    T_I0 = getTransformI0();
+    T_01 = jointToTransform01(q);
+    T_12 = jointToTransform12(q);
+    T_23 = jointToTransform23(q);
+    T_3E = getTransform3E();
+    
+    T_IE = T_I0 * T_01 * T_12 * T_23 * T_3E;\
+
+//    std::cout << "T_IE = " << T_IE << endl;
+    
+    // Forward Kinematics
+    // Pratice_2
     MatrixXd T0E(4,4);
     MatrixXd C0E(3,3);
-
-    //* Practice 1. Forward Kinematics    
-    q << 10,20,30,40,50,60;
-    q = q*3.14/180;
+    VectorXd P0E = VectorXd::Zero(3);
+    VectorXd ERM = VectorXd::Zero(3);
     
-    T0E = jointToTransform01(q)*jointToTransform12(q)*jointToTransform23(q)*jointToTransform34(q)*jointToTransform45(q)*jointToTransform56(q)*getTransform6E();
-    
+    T0E = T_IE;
+    P0E = jointToPosition(q);
     C0E = jointToRotMat(q);
-    rotToEuler(C0E);
+    ERM = rotToEuler(C0E);
     
+            
+    std::cout << "T0E =" << std::endl << T0E << std::endl;   
+    std::cout << "P0E =" << std::endl << P0E << std::endl;
+    std::cout << "C0E =" << std::endl << C0E << std::endl;   
+    std::cout << "ERM =" << std::endl << ERM << std::endl;      
     
-    std::cout <<"T0E = " << T0E << std::endl;
-    jointToTransform01(q);
-    
-    std::cout <<"Hello world" << endl;
 }
-
 
 
 
@@ -368,7 +325,7 @@ void gazebo::rok3_plugin::Load(physics::ModelPtr _model, sdf::ElementPtr /*_sdf*
 
     //* model.urdf file based model data input to [Model* rok3_model] for using RBDL
     Model* rok3_model = new Model();
-    Addons::URDFReadFromFile("/root/.gazebo/models/rok3_model/urdf/rok3_model.urdf", rok3_model, true, true);
+    Addons::URDFReadFromFile("/home/jun/.gazebo/models/rok3_model/urdf/rok3_model.urdf", rok3_model, true, true);
     //↑↑↑ Check File Path ↑↑↑
     nDoF = rok3_model->dof_count - 6; // Get degrees of freedom, except position and orientation of the robot
     joint = new ROBO_JOINT[nDoF]; // Generation joint variables struct
