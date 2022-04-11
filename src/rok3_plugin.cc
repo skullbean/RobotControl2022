@@ -156,92 +156,159 @@ MatrixXd getTransformI0(){
 }
 
 
-MatrixXd jointToTransform01(Vector3d q){
+MatrixXd jointToTransform01(VectorXd q){
     
     
     MatrixXd tmp_m(4,4);
+    VectorXd r = VectorXd::Zero(3);
     float qq = q(0);
-    float l0 = 1;
+    r << 0, 0.105, -0.1512;
     
-    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = 0;
-    tmp_m(1,0) = 0;         tmp_m(1,1) = 0;     tmp_m(1,2) = 0;         tmp_m(1,3) = 0;
-    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = l0;
-    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
+    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = -sin(qq);      tmp_m(0,2) = 0;        tmp_m(0,3) = r(0);
+    tmp_m(1,0) = sin(qq);   tmp_m(1,1) = cos(qq);       tmp_m(1,2) = 0;        tmp_m(1,3) = r(1);
+    tmp_m(2,0) = 0;         tmp_m(2,1) = 0;             tmp_m(2,2) = 1;        tmp_m(2,3) = r(2);
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;             tmp_m(3,2) = 0;        tmp_m(3,3) = 1;
 
-    //std::cout << tmp_m << endl;
+//    std::cout << "tmp_m="<< tmp_m << endl;
     
     return tmp_m;
 }
 
 
-
-MatrixXd jointToTransform12(Vector3d q){
+MatrixXd jointToTransform12(VectorXd q){
     
     
     MatrixXd tmp_m(4,4);
+    VectorXd r = VectorXd::Zero(3);
     float qq = q(1);
-    float l1 = 1;
+    r << 0, 0, 0;
     
-    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = 0;
-    tmp_m(1,0) = 0;         tmp_m(1,1) = 0;     tmp_m(1,2) = 0;         tmp_m(1,3) = 0;
-    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = l1;
-    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
+    tmp_m(0,0) = 1;         tmp_m(0,1) = 0;         tmp_m(0,2) = 0;              tmp_m(0,3) = r(0);
+    tmp_m(1,0) = 0;         tmp_m(1,1) = cos(qq);   tmp_m(1,2) = -sin(qq);       tmp_m(1,3) = r(1);
+    tmp_m(2,0) = 0;         tmp_m(2,1) = sin(qq);   tmp_m(2,2) = cos(qq);        tmp_m(2,3) = r(2);
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;         tmp_m(3,2) = 0;              tmp_m(3,3) = 1;
 
+//    std::cout << "tmp_m="<< tmp_m << endl;
     
     return tmp_m;
 }
 
-
-MatrixXd jointToTransform23(Vector3d q){
+MatrixXd jointToTransform23(VectorXd q){
+    
     
     MatrixXd tmp_m(4,4);
+    VectorXd r = VectorXd::Zero(3);
     float qq = q(2);
-    float l2 = 1;
+    r << 0, 0, 0;
     
-    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = 0;
-    tmp_m(1,0) = 0;         tmp_m(1,1) = 0;     tmp_m(1,2) = 0;         tmp_m(1,3) = 0;
-    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);   tmp_m(2,3) = l2;
-    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;         tmp_m(3,3) = 1;
+    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = r(0);
+    tmp_m(1,0) = 0;         tmp_m(1,1) = 1;     tmp_m(1,2) = 0;        tmp_m(1,3) = r(1);
+    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);  tmp_m(2,3) = r(2);
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;        tmp_m(3,3) = 1;
 
+//    std::cout << "tmp_m="<< tmp_m << endl;
     
     return tmp_m;
 }
 
-MatrixXd getTransform3E(){
+MatrixXd jointToTransform34(VectorXd q){
+    
+    
     MatrixXd tmp_m(4,4);
-    float l3 = 1;
+    VectorXd r = VectorXd::Zero(3);
+    float qq = q(3);
+    r << 0, 0, -0.35;
+    
+    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = r(0);
+    tmp_m(1,0) = 0;         tmp_m(1,1) = 1;     tmp_m(1,2) = 0;        tmp_m(1,3) = r(1);
+    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);  tmp_m(2,3) = r(2);
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;        tmp_m(3,3) = 1;
+
+//    std::cout << "tmp_m="<< tmp_m << endl;
+//    std::cout << "r(0)="<< r(0) << endl;
+//    std::cout << "r(1)="<< r(1) << endl;
+//    std::cout << "r(2)="<< r(2) << endl;
+    return tmp_m;
+}
+
+MatrixXd jointToTransform45(VectorXd q){
+    
+    
+    MatrixXd tmp_m(4,4);
+    VectorXd r = VectorXd::Zero(3);
+    float qq = q(4);
+    r << 0, 0, -0.35;
+    
+    tmp_m(0,0) = cos(qq);   tmp_m(0,1) = 0;     tmp_m(0,2) = sin(qq);  tmp_m(0,3) = r(0);
+    tmp_m(1,0) = 0;         tmp_m(1,1) = 1;     tmp_m(1,2) = 0;        tmp_m(1,3) = r(1);
+    tmp_m(2,0) = -sin(qq);  tmp_m(2,1) = 0;     tmp_m(2,2) = cos(qq);  tmp_m(2,3) = r(2);
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;     tmp_m(3,2) = 0;        tmp_m(3,3) = 1;
+
+//    std::cout << "tmp_m="<< tmp_m << endl;
+    
+    return tmp_m;
+}
+
+MatrixXd jointToTransform56(VectorXd q){
+    
+    
+    MatrixXd tmp_m(4,4);
+    VectorXd r = VectorXd::Zero(3);
+    float qq = q(5);
+    r << 0, 0, 0;
+    
+    tmp_m(0,0) = 1;         tmp_m(0,1) = 0;         tmp_m(0,2) = 0;              tmp_m(0,3) = r(0);
+    tmp_m(1,0) = 0;         tmp_m(1,1) = cos(qq);   tmp_m(1,2) = -sin(qq);       tmp_m(1,3) = r(1);
+    tmp_m(2,0) = 0;         tmp_m(2,1) = sin(qq);   tmp_m(2,2) = cos(qq);        tmp_m(2,3) = r(2);
+    tmp_m(3,0) = 0;         tmp_m(3,1) = 0;         tmp_m(3,2) = 0;              tmp_m(3,3) = 1;
+
+//    std::cout << "tmp_m="<< tmp_m << endl;
+    
+    return tmp_m;
+}
+
+MatrixXd getTransform6E(){
+    MatrixXd tmp_m(4,4);
+    float l = -0.09;
     tmp_m << 1, 0, 0, 0,\
              0, 1, 0, 0,\
-             0, 0, 1, l3,\
+             0, 0, 1, l,\
              0, 0, 0, 1;
     
     return tmp_m;
 }
 
-VectorXd jointToPosition(Vector3d q){
+VectorXd jointToPosition(VectorXd q){
     VectorXd tmp_v = VectorXd::Zero(3);
     MatrixXd tmp_m(4,4);
     
     tmp_m = getTransformI0()*
             jointToTransform01(q)* 
             jointToTransform12(q)* 
-            jointToTransform23(q)* 
-            getTransform3E();
+            jointToTransform23(q)*
+            jointToTransform34(q)*
+            jointToTransform45(q)*
+            jointToTransform56(q)*
+            getTransform6E();
         
     tmp_v = tmp_m.block(0,3,3,1);
     
     
     return tmp_v;
 }
-MatrixXd jointToRotMat(Vector3d q){
+
+MatrixXd jointToRotMat(VectorXd q){
     MatrixXd tmp_m(3,3);
     MatrixXd T_IE(4,4);
     
     T_IE =  getTransformI0()*
             jointToTransform01(q)* 
             jointToTransform12(q)* 
-            jointToTransform23(q)* 
-            getTransform3E();
+            jointToTransform23(q)*
+            jointToTransform34(q)*
+            jointToTransform45(q)*
+            jointToTransform56(q)*
+            getTransform6E();
 
     tmp_m = T_IE.block(0,0,3,3);
     
@@ -253,9 +320,10 @@ VectorXd rotToEuler(MatrixXd rotMat){
     VectorXd tmp_v(3);
     
     tmp_v(0) = atan2(rotMat(1,0),rotMat(0,0));
-    tmp_v(1) = atan2(-rotMat(2,0),sqrt(rotMat(2,1)*rotMat(2,1)+rotMat(2,2)*rotMat(2,2)));
-    tmp_v(2) = atan2(rotMat(2,1),rotMat(2,2));         
-
+    tmp_v(1) = atan2(-rotMat(2,0),sqrt((rotMat(2,1)*rotMat(2,1))+(rotMat(2,2)*rotMat(2,2))));
+    tmp_v(2) = atan2(rotMat(2,1),rotMat(2,2));      
+    
+    std::cout << "tmp_v =" << std::endl << tmp_v << std::endl; 
     return tmp_v;
 }
 
@@ -263,36 +331,49 @@ VectorXd rotToEuler(MatrixXd rotMat){
 void Practice()
 {
     // Forward Kinematics 
-    // Pratice_1
-    MatrixXd T_I0(4,4), T_01(4,4), T_12(4,4), T_23(4,4), T_3E(4,4), T_IE(4,4);
-    Vector3d q = {30,30,30}; q = q*PI/180;
-    VectorXd jointToPossition(Vector3d q);
-    MatrixXd jointToRotMat(Vector3d q);
+    // Practice_1
+    MatrixXd T_I0(4,4), T_01(4,4), T_12(4,4), T_23(4,4), T_3E(4,4), T_34(4,4), T_45(4,4), T_56(4,4), T_6E(4,4), T_IE(4,4);
+    VectorXd q = VectorXd::Zero(6);
+    VectorXd jointToPossition(VectorXd q);
+    MatrixXd jointToRotMat(VectorXd q);
     VectorXd rotToEuler(MatrixXd q);
-
     
+    q << 10, 20, 30, 40, 50, 60; 
+    q = q*PI/180;
+
+//    r << 0, 0.105, 0.1512,\
+//         0,    0,    0,   \
+//         0,    0,    0,   \
+//         0,    0,   0.35, \
+//         0,    0,   0.35, \
+//         0,    0,    0  ;
 
     T_I0 = getTransformI0();
     T_01 = jointToTransform01(q);
     T_12 = jointToTransform12(q);
     T_23 = jointToTransform23(q);
-    T_3E = getTransform3E();
+    T_34 = jointToTransform34(q);
+    T_45 = jointToTransform45(q);
+    T_56 = jointToTransform56(q);
+    T_6E = getTransform6E();
     
-    T_IE = T_I0 * T_01 * T_12 * T_23 * T_3E;\
+    T_IE = T_I0 * T_01 * T_12 * T_23 * T_34 * T_45 * T_56 * T_6E;
 
+//    std::cout << "T_01 = " << T_01 << endl;
 //    std::cout << "T_IE = " << T_IE << endl;
     
+    
     // Forward Kinematics
-    // Pratice_2
+    // Practice_2
     MatrixXd T0E(4,4);
-    MatrixXd C0E(3,3);
     VectorXd P0E = VectorXd::Zero(3);
+    MatrixXd C0E(3,3);
     VectorXd ERM = VectorXd::Zero(3);
     
     T0E = T_IE;
     P0E = jointToPosition(q);
     C0E = jointToRotMat(q);
-    ERM = rotToEuler(C0E);
+    ERM = rotToEuler(C0E)*180/PI;
     
             
     std::cout << "T0E =" << std::endl << T0E << std::endl;   
