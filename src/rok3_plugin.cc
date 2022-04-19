@@ -418,7 +418,7 @@ void gazebo::rok3_plugin::Load(physics::ModelPtr _model, sdf::ElementPtr /*_sdf*
 
     //* setting for getting dt
     last_update_time = model->GetWorld()->GetSimTime();
-    update_connection = event::Events::ConnectWorldUpdateBegin(boost::bind(&rok3_plugin::UpdateAlgorithm, this));
+    update_connection = event::Events::ConnectWorldUpdateBegin(boost::bind(&rok3_plugin::UpdateAlgorithm, this)); //Time interrupt funtion : UpdateAlgorithm 
     
     
     //* Kinematics Test
@@ -448,7 +448,7 @@ void gazebo::rok3_plugin::UpdateAlgorithm()
     //* Read Sensors data
     GetjointData();
     
-    
+    //* Control_Algorithm = > Target_Angle
     joint[LHY].targetRadian = 10*3.14/180;
     joint[LHR].targetRadian = 20*3.14/180;
     joint[LHP].targetRadian = 30*3.14/180;
