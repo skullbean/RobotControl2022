@@ -480,6 +480,50 @@ MatrixXd jointToRotJac(VectorXd q)
     return J_R;
 }
 
+MatrixXd pseudoInverseMat(MatrixXd A, double lambda)
+{
+    // Input: Any m-by-n matrix
+    // Output: An n-by-m pseudo-inverse of the input according to the Moore-Penrose formula
+    MatrixXd pinvA;
+    MatrixXd I;
+
+    int m = A.rows();
+    int n = A.cols();
+    if(m>=n){
+        I = MatrixXd::Identity(n,n);
+        pinvA = ((A.transpose() * A + lambda*lambda*I).inverse())*A.transpose();
+    }
+    else if(m<n){
+        I = MatrixXd::Identity(m,m);
+        pinvA = A.transpose()*((A * A.transpose() + lambda*lambda*I).inverse());
+    }
+
+    return pinvA;
+}
+
+VectorXd rotMatToRotVec(MatrixXd C)
+{
+    // Input: a rotation matrix C
+    // Output: the rotational vector which describes the rotation C
+    Vector3d phi,n;
+    double th;
+    
+    if(fabs(th)<0.001){
+         n << 0,0,0;
+    }
+    else{
+
+        th = acos( (C(0,0) + C(1,1) + C(2,2)) / 2.0 );
+
+        n << (C(2,1) - C(1,2)), (C(0,2) - C(2,0)) , (C(1,0) - C(0,1)) ;
+        n = (1.0 / (2.0*sin(th))) * n;
+    }
+        
+    phi = th*n;
+    
+    return phi;
+}
+
 void Practice()
 {
     // Forward Kinematics 
@@ -500,7 +544,7 @@ void Practice()
 //         0,    0,   0.35, \
 //         0,    0,   0.35, \
 //         0,    0,    0  ;
-
+/*
     T_I0 = getTransformI0();
     T_01 = jointToTransform01(q);
     T_12 = jointToTransform12(q);
@@ -511,11 +555,11 @@ void Practice()
     T_6E = getTransform6E();
     
     T_IE = T_I0 * T_01 * T_12 * T_23 * T_34 * T_45 * T_56 * T_6E;
-
+*/
 //    std::cout << "T_01 = " << T_01 << endl;
 //    std::cout << "T_IE = " << T_IE << endl;
     
-    
+/*  
     // Forward Kinematics
     // Practice_2
     MatrixXd T0E(4,4);
@@ -541,6 +585,44 @@ void Practice()
 
     MatrixXd JR(3,6);
     JR = jointToRotJac(q);
+ */
+    
+    //Practice_4
+    
+       MatrixXd J(6,6);
+    J << jointToPosJac(q),\
+         jointToRotJac(q);
+                   
+    MatrixXd pinvj;
+    pinvj = pseudoInverseMat(J, 0.0);
+
+    MatrixXd invj;
+    invj = J.inverse();
+
+    std::cout<<" Test, Inverse"<<std::endl;
+    std::cout<< invj <<std::endl;
+    std::cout<<std::endl;
+    
+
+    std::cout<<" Test, PseudoInverse"<<std::endl;
+    std::cout<< pinvj <<std::endl;
+    std::cout<<std::endl;
+    
+    VectorXd q_des(6),q_init(6);
+    MatrixXd C_err(3,3), C_des(3,3), C_init(3,3);
+
+    q_init = 0.5*q_des;
+    C_des = jointToRotMat(q_des);
+    C_init = jointToRotMat(q_init);
+    C_err = C_des * C_init.transpose();
+
+    VectorXd dph(3);
+
+    dph = rotMatToRotVec(C_err);
+    
+    std::cout<<" Test, Rotational Vector"<<std::endl;
+    std::cout<< pinvj <<std::endl;
+    std::cout<<std::endl;
 }
 
 
