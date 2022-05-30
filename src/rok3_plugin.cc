@@ -508,13 +508,12 @@ VectorXd rotMatToRotVec(MatrixXd C)
     Vector3d phi,n;
     double th;
     
+    th = acos( (C(0,0) + C(1,1) + C(2,2) -1.0) / 2.0 );
+
     if(fabs(th)<0.001){
          n << 0,0,0;
     }
     else{
-
-        th = acos( (C(0,0) + C(1,1) + C(2,2)) / 2.0 );
-
         n << (C(2,1) - C(1,2)), (C(0,2) - C(2,0)) , (C(1,0) - C(0,1)) ;
         n = (1.0 / (2.0*sin(th))) * n;
     }
@@ -522,6 +521,70 @@ VectorXd rotMatToRotVec(MatrixXd C)
     phi = th*n;
     
     return phi;
+    
+    
+}
+
+VectorXd inverseKinematics(Vector3d r_des, MatrixXd C_des, VectorXd q0, double tol)
+{
+    // Input: desired end-effector position, desired end-effector orientation, initial guess for joint angles, threshold for the stopping-criterion
+    // Output: joint angles which match desired end-effector position and orientation
+    double num_it;
+    MatrixXd J_P(6,6), J_R(6,6), J(6,6), pinvJ(6,6), C_err(3,3), C_IE(3,3);
+    VectorXd q(6),dq(6),dXe(6);
+    Vector3d dr, dph;
+    double lambda;
+    
+    //* Set maximum number of iterations
+    double max_it = 200;
+    
+    //* Initialize the solution with the initial guess
+    q=q0;
+    C_IE = jointToRotMat(q);
+    C_err = C_des*C_IE.transpose();
+    
+    //* Damping factor
+    lambda = 0.001;
+    
+    //* Initialize error
+    dr = r_des-jointToPosition(q);
+    dph = rotMatToRotVec(C_err);
+    dXe << dr(0), dr(1), dr(2), dph(0), dph(1), dph(2);
+    
+    ////////////////////////////////////////////////
+    //** Iterative inverse kinematics
+    ////////////////////////////////////////////////
+    
+    //* Iterate until terminating condition
+    while (num_it<max_it && dXe.norm()>tol)
+    {
+        
+        //Compute Inverse Jacobian
+        J_P = jointToPosJac(q);
+        J_R = jointToRotJac(q);
+
+        J.block(0,0,3,6) = J_P;
+        J.block(3,0,3,6) = J_R; // Geometric Jacobian
+        
+        // Convert to Geometric Jacobian to Analytic Jacobian
+        dq = pseudoInverseMat(J,lambda)*dXe;
+        
+        // Update law
+        q += 0.5*dq;
+        
+        // Update error
+        C_IE = jointToRotMat(q);
+        C_err = C_des*C_IE.transpose();
+        
+        dr = r_des-jointToPosition(q);
+        dph = rotMatToRotVec(C_err);
+        dXe << dr(0), dr(1), dr(2), dph(0), dph(1), dph(2);
+                   
+        num_it++;
+    }
+    std::cout << "iteration: " << num_it << std::endl << ", value: " << q*180/PI << std::endl;
+    
+    return q;
 }
 
 void Practice()
@@ -544,7 +607,7 @@ void Practice()
 //         0,    0,   0.35, \
 //         0,    0,   0.35, \
 //         0,    0,    0  ;
-/*
+
     T_I0 = getTransformI0();
     T_01 = jointToTransform01(q);
     T_12 = jointToTransform12(q);
@@ -555,11 +618,11 @@ void Practice()
     T_6E = getTransform6E();
     
     T_IE = T_I0 * T_01 * T_12 * T_23 * T_34 * T_45 * T_56 * T_6E;
-*/
+
 //    std::cout << "T_01 = " << T_01 << endl;
 //    std::cout << "T_IE = " << T_IE << endl;
     
-/*  
+    
     // Forward Kinematics
     // Practice_2
     MatrixXd T0E(4,4);
@@ -585,11 +648,9 @@ void Practice()
 
     MatrixXd JR(3,6);
     JR = jointToRotJac(q);
- */
     
     //Practice_4
-    
-       MatrixXd J(6,6);
+    MatrixXd J(6,6);
     J << jointToPosJac(q),\
          jointToRotJac(q);
                    
@@ -610,7 +671,8 @@ void Practice()
     
     VectorXd q_des(6),q_init(6);
     MatrixXd C_err(3,3), C_des(3,3), C_init(3,3);
-
+    
+    q_des = q; 
     q_init = 0.5*q_des;
     C_des = jointToRotMat(q_des);
     C_init = jointToRotMat(q_init);
@@ -621,8 +683,17 @@ void Practice()
     dph = rotMatToRotVec(C_err);
     
     std::cout<<" Test, Rotational Vector"<<std::endl;
-    std::cout<< pinvj <<std::endl;
+    std::cout<< dph <<std::endl;
     std::cout<<std::endl;
+    
+    //Practice_5
+    VectorXd r_des = VectorXd::Zero(3);;
+    VectorXd q_cal = VectorXd::Zero(6);
+        // q = [10;20;30;40;50;60]*pi/180;
+        r_des = jointToPosition(q);
+        C_des = jointToRotMat(q);
+        q_cal = inverseKinematics(r_des, C_des, q*0.5, 0.001);
+
 }
 
 
