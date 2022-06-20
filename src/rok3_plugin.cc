@@ -99,7 +99,17 @@ namespace gazebo
         {
             WST = 0, LHY, LHR, LHP, LKN, LAP, LAR, RHY, RHR, RHP, RKN, RAP, RAR
         };
-
+        
+        enum
+        {
+            X = 0, Y, Z
+        };
+        
+        enum
+        {
+            Right = 0, Left
+        };
+        
         //* Joint Variables
         int nDoF; // Total degrees of freedom, except position and orientation of the robot
 
@@ -124,12 +134,40 @@ namespace gazebo
         } ROBO_JOINT;
         ROBO_JOINT* joint;
         
-        //Inv_k
-        VectorXd q_init = VectorXd::Zero(6);
-        VectorXd q_des = VectorXd::Zero(6);
-        VectorXd r_des = VectorXd::Zero(3);
-        MatrixXd C_des = MatrixXd::Identity(3,3);    
-
+        //TIME
+        VectorXd f_time = VectorXd::Zero(8);
+        double s_time = 0;
+        double r_time = 0;
+        
+        //COUNT
+        int N = 0;
+        int ph = 0;
+        
+        // Target pose
+        VectorXd tar_pos_L = VectorXd::Zero(3);
+        VectorXd tar_pos_R = VectorXd::Zero(3);
+        
+        // Com
+        VectorXd Current_com_pos = VectorXd::Zero(3);
+        VectorXd Current_com_vel = VectorXd::Zero(3);
+       
+        // Left_foot
+        VectorXd q_init_L = VectorXd::Zero(6);
+        VectorXd q_des_L = VectorXd::Zero(6);
+        VectorXd r_init_L = VectorXd::Zero(3);
+        VectorXd r_des_L = VectorXd::Zero(3);
+        MatrixXd C_init_L = MatrixXd::Identity(3,3);
+        MatrixXd C_des_L = MatrixXd::Identity(3,3); 
+       
+        // Right_foot
+        VectorXd q_init_R = VectorXd::Zero(6);
+        VectorXd q_des_R = VectorXd::Zero(6);
+        VectorXd r_init_R = VectorXd::Zero(3);
+        VectorXd r_des_R = VectorXd::Zero(3);
+        MatrixXd C_init_R = MatrixXd::Identity(3,3); 
+        MatrixXd C_des_R = MatrixXd::Identity(3,3); 
+        
+        
     public:
         //*** Functions for RoK-3 Simulation in Gazebo ***//
         void Load(physics::ModelPtr _model, sdf::ElementPtr /*_sdf*/); // Loading model data and initializing the system before simulation 
@@ -162,14 +200,18 @@ MatrixXd getTransformI0(){
 }
 
 
-MatrixXd jointToTransform01(VectorXd q){
+MatrixXd jointToTransform01(VectorXd q, bool direction){
     
     
     MatrixXd tmp_m(4,4);
     VectorXd r = VectorXd::Zero(3);
     float qq = q(0);
-    r << 0, 0.105, -0.1512;
     
+    if(direction){
+        r << 0, 0.105, -0.1512;
+    }else{
+        r << 0, -0.105, -0.1512;
+    };
     tmp_m(0,0) = cos(qq);   tmp_m(0,1) = -sin(qq);      tmp_m(0,2) = 0;        tmp_m(0,3) = r(0);
     tmp_m(1,0) = sin(qq);   tmp_m(1,1) = cos(qq);       tmp_m(1,2) = 0;        tmp_m(1,3) = r(1);
     tmp_m(2,0) = 0;         tmp_m(2,1) = 0;             tmp_m(2,2) = 1;        tmp_m(2,3) = r(2);
@@ -179,7 +221,6 @@ MatrixXd jointToTransform01(VectorXd q){
     
     return tmp_m;
 }
-
 
 MatrixXd jointToTransform12(VectorXd q){
     
@@ -284,12 +325,12 @@ MatrixXd getTransform6E(){
     return tmp_m;
 }
 
-VectorXd jointToPosition(VectorXd q){
+VectorXd jointToPosition(VectorXd q, bool direction){
     VectorXd tmp_v = VectorXd::Zero(3);
     MatrixXd tmp_m(4,4);
     
     tmp_m = getTransformI0()*
-            jointToTransform01(q)* 
+            jointToTransform01(q, direction)* 
             jointToTransform12(q)* 
             jointToTransform23(q)*
             jointToTransform34(q)*
@@ -303,12 +344,12 @@ VectorXd jointToPosition(VectorXd q){
     return tmp_v;
 }
 
-MatrixXd jointToRotMat(VectorXd q){
+MatrixXd jointToRotMat(VectorXd q, bool direction){
     MatrixXd tmp_m(3,3);
     MatrixXd T_IE(4,4);
     
     T_IE =  getTransformI0()*
-            jointToTransform01(q)* 
+            jointToTransform01(q, direction)* 
             jointToTransform12(q)* 
             jointToTransform23(q)*
             jointToTransform34(q)*
@@ -329,11 +370,11 @@ VectorXd rotToEuler(MatrixXd rotMat){
     tmp_v(1) = atan2(-rotMat(2,0),sqrt((rotMat(2,1)*rotMat(2,1))+(rotMat(2,2)*rotMat(2,2))));
     tmp_v(2) = atan2(rotMat(2,1),rotMat(2,2));      
     
-    std::cout << "tmp_v =" << std::endl << tmp_v << std::endl; 
+    //std::cout << "tmp_v =" << std::endl << tmp_v << std::endl; 
     return tmp_v;
 }
 
-MatrixXd jointToPosJac(VectorXd q)
+MatrixXd jointToPosJac(VectorXd q, bool direction)
 {
     // Input: vector of generalized coordinates (joint angles)
     // Output: J_P, Jacobian of the end-effector translation which maps joint velocities to end-effector linear velocities in I frame.
@@ -350,7 +391,7 @@ MatrixXd jointToPosJac(VectorXd q)
 
     //* Compute the relative homogeneous transformation matrices.
     T_I0 = getTransformI0();
-    T_01 = jointToTransform01(q);
+    T_01 = jointToTransform01(q, direction);
     T_12 = jointToTransform12(q);
     T_23 = jointToTransform23(q);
     T_34 = jointToTransform34(q);
@@ -360,12 +401,12 @@ MatrixXd jointToPosJac(VectorXd q)
 
     //* Compute the homogeneous transformation matrices from frame k to the inertial frame I.
     T_I1 = T_I0*T_01;
-    T_I2 = T_I0*T_01*T_12;
-    T_I3 = T_I0*T_01*T_12*T_23;
-    T_I4 = T_I0*T_01*T_12*T_23*T_34;
-    T_I5 = T_I0*T_01*T_12*T_23*T_34*T_45;
-    T_I6 = T_I0*T_01*T_12*T_23*T_34*T_45*T_56;
-    T_IE = T_I0*T_01*T_12*T_23*T_34*T_45*T_56*T_6E;
+    T_I2 = T_I1*T_12;//T_I0*T_01*T_12;
+    T_I3 = T_I2*T_23;//T_I0*T_01*T_12*T_23;
+    T_I4 = T_I3*T_34;//T_I0*T_01*T_12*T_23*T_34;
+    T_I5 = T_I4*T_45;//T_I0*T_01*T_12*T_23*T_34*T_45;
+    T_I6 = T_I5*T_56;//T_I0*T_01*T_12*T_23*T_34*T_45*T_56;
+    T_IE = T_I6*T_6E;//T_I0*T_01*T_12*T_23*T_34*T_45*T_56*T_6E;
 
     //* Extract the rotation matrices from each homogeneous transformation matrix. Use sub-matrix of EIGEN. https://eigen.tuxfamily.org/dox/group__QuickRefPage.html
     R_I1 = T_I1.block(0,0,3,3);
@@ -421,13 +462,13 @@ MatrixXd jointToPosJac(VectorXd q)
     J_R.col(4) << n_I_5;
     J_R.col(5) << n_I_6;
     
-    std::cout << "Test, JP:" << std::endl << J_P << std::endl;
+    //std::cout << "Test, JP:" << std::endl << J_P << std::endl;
     //std::cout << "Test, JR:" << std::endl << J_R << std::endl;
 
     return J_P;
 }
 
-MatrixXd jointToRotJac(VectorXd q)
+MatrixXd jointToRotJac(VectorXd q, bool direction)
 {
    // Input: vector of generalized coordinates (joint angles)
     // Output: J_R, Jacobian of the end-effector orientation which maps joint velocities to end-effector angular velocities in I frame.
@@ -438,7 +479,7 @@ MatrixXd jointToRotJac(VectorXd q)
     Vector3d n_1, n_2, n_3, n_4, n_5, n_6;
     //* Compute the relative homogeneous transformation matrices.
     T_I0 = getTransformI0();
-    T_01 = jointToTransform01(q);
+    T_01 = jointToTransform01(q,direction);
     T_12 = jointToTransform12(q);
     T_23 = jointToTransform23(q);
     T_34 = jointToTransform34(q);
@@ -448,12 +489,12 @@ MatrixXd jointToRotJac(VectorXd q)
 
     //* Compute the homogeneous transformation matrices from frame k to the inertial frame I.
     T_I1 = T_I0*T_01;
-    T_I2 = T_I0*T_01*T_12;
-    T_I3 = T_I0*T_01*T_12*T_23;
-    T_I4 = T_I0*T_01*T_12*T_23*T_34;
-    T_I5 = T_I0*T_01*T_12*T_23*T_34*T_45;
-    T_I6 = T_I0*T_01*T_12*T_23*T_34*T_45*T_56;
-    T_IE = T_I0*T_01*T_12*T_23*T_34*T_45*T_56*T_6E;
+    T_I2 = T_I1*T_12;//T_I0*T_01*T_12;
+    T_I3 = T_I2*T_23;//T_I0*T_01*T_12*T_23;
+    T_I4 = T_I3*T_34;//T_I0*T_01*T_12*T_23*T_34;
+    T_I5 = T_I4*T_45;//T_I0*T_01*T_12*T_23*T_34*T_45;
+    T_I6 = T_I5*T_56;//T_I0*T_01*T_12*T_23*T_34*T_45*T_56;
+    T_IE = T_I6*T_6E;//T_I0*T_01*T_12*T_23*T_34*T_45*T_56*T_6E;
 
     //* Extract the rotation matrices from each homogeneous transformation matrix. Use sub-matrix of EIGEN. https://eigen.tuxfamily.org/dox/group__QuickRefPage.html
     R_I1 = T_I1.block(0,0,3,3);
@@ -481,7 +522,7 @@ MatrixXd jointToRotJac(VectorXd q)
 
 
 
-    std::cout << "Test, J_R:" << std::endl << J_R << std::endl;
+    //std::cout << "Test, J_R:" << std::endl << J_R << std::endl;
 
     return J_R;
 }
@@ -533,7 +574,7 @@ VectorXd rotMatToRotVec(MatrixXd C)
     
 }
 
-VectorXd inverseKinematics(Vector3d r_des, MatrixXd C_des, VectorXd q0, double tol)
+VectorXd inverseKinematics(Vector3d r_des, MatrixXd C_des, VectorXd q0, double tol, bool direction)
 {
     // Input: desired end-effector position, desired end-effector orientation, initial guess for joint angles, threshold for the stopping-criterion
     // Output: joint angles which match desired end-effector position and orientation
@@ -548,7 +589,7 @@ VectorXd inverseKinematics(Vector3d r_des, MatrixXd C_des, VectorXd q0, double t
     
     //* Initialize the solution with the initial guess
     q = q0;
-    C_IE = jointToRotMat(q);
+    C_IE = jointToRotMat(q,direction);
     C_err = C_des*C_IE.transpose();
     
 
@@ -556,7 +597,9 @@ VectorXd inverseKinematics(Vector3d r_des, MatrixXd C_des, VectorXd q0, double t
     lambda = 0.001;
     
     //* Initialize error
-    dr = r_des-jointToPosition(q);
+    dr = r_des-jointToPosition(q,direction);
+;
+    
     dph = rotMatToRotVec(C_err);
     dXe << dr(0), dr(1), dr(2), dph(0), dph(1), dph(2);
     
@@ -570,8 +613,8 @@ VectorXd inverseKinematics(Vector3d r_des, MatrixXd C_des, VectorXd q0, double t
     {
 
         //Compute Inverse Jacobian
-        J_P = jointToPosJac(q);
-        J_R = jointToRotJac(q);
+        J_P = jointToPosJac(q,direction);
+        J_R = jointToRotJac(q,direction);
 
         J.block(0,0,3,6) = J_P;
         J.block(3,0,3,6) = J_R; // Geometric Jacobian
@@ -583,16 +626,22 @@ VectorXd inverseKinematics(Vector3d r_des, MatrixXd C_des, VectorXd q0, double t
         q += 0.5*dq;
         
         // Update error
-        C_IE = jointToRotMat(q);
+        C_IE = jointToRotMat(q,direction);
         C_err = C_des*C_IE.transpose();
         
-        dr = r_des-jointToPosition(q);
+     
+        dr = r_des-jointToPosition(q,direction);
+       
+        
         dph = rotMatToRotVec(C_err);
         dXe << dr(0), dr(1), dr(2), dph(0), dph(1), dph(2);
                    
         num_it++;
+        
+ 
     }
-    std::cout << "iteration: " << num_it << std::endl << ", value: " << q*180/PI << std::endl;
+    //std::cout << "iteration: " << num_it << std::endl; //<< ", value: " << q*180/PI << std::endl;
+    
     
     return q;
 }
@@ -607,19 +656,36 @@ double func_1_cos(double t, double init, double f, double T)
     return des;
 }
 
+double cosWave(double Amp, double Period, double Time, double InitPos){
+    /* cosWave
+     * input : Amp, Period, Time, InitPos
+     * output : Generate CosWave Trajectory
+     */
+
+    return (Amp / 2)*(1 - cos(PI / Period * Time)) + InitPos;
+}
+double cosWave_2(double Amp, double Period, double Time, double InitPos){
+    /* cosWave
+     * input : Amp, Period, Time, InitPos
+     * output : Generate CosWave Trajectory
+     */
+
+    return (Amp / 2)*(1 - cos(PI / Period * Time)) + InitPos;
+}
+
 void Practice()
 {
     // Forward Kinematics 
     // Practice_1
-    MatrixXd T_I0(4,4), T_01(4,4), T_12(4,4), T_23(4,4), T_3E(4,4), T_34(4,4), T_45(4,4), T_56(4,4), T_6E(4,4), T_IE(4,4);
-    VectorXd q = VectorXd::Zero(6);
-    VectorXd jointToPossition(VectorXd q);
-    MatrixXd jointToRotMat(VectorXd q);
-    VectorXd rotToEuler(MatrixXd q);
+//    MatrixXd T_I0(4,4), T_01(4,4), T_12(4,4), T_23(4,4), T_3E(4,4), T_34(4,4), T_45(4,4), T_56(4,4), T_6E(4,4), T_IE(4,4);
+//    VectorXd q = VectorXd::Zero(6);
+//    VectorXd jointToPossition(VectorXd q);
+//    MatrixXd jointToRotMat(VectorXd q);
+//    VectorXd rotToEuler(MatrixXd q);
 
-    
-    q << 10, 20, 30, 40, 50, 60; 
-    q = q*PI/180;
+//    
+//    q << 10, 20, 30, 40, 50, 60; 
+//    q = q*PI/180;
 
 //    r << 0, 0.105, 0.1512,\
 //         0,    0,    0,   \
@@ -628,32 +694,32 @@ void Practice()
 //         0,    0,   0.35, \
 //         0,    0,    0  ;
 
-    T_I0 = getTransformI0();
-    T_01 = jointToTransform01(q);
-    T_12 = jointToTransform12(q);
-    T_23 = jointToTransform23(q);
-    T_34 = jointToTransform34(q);
-    T_45 = jointToTransform45(q);
-    T_56 = jointToTransform56(q);
-    T_6E = getTransform6E();
-    
-    T_IE = T_I0 * T_01 * T_12 * T_23 * T_34 * T_45 * T_56 * T_6E;
-
-//    std::cout << "T_01 = " << T_01 << endl;
-//    std::cout << "T_IE = " << T_IE << endl;
-    
-    
-    // Forward Kinematics
-    // Practice_2
-    MatrixXd T0E(4,4);
-    VectorXd P0E = VectorXd::Zero(3);
-    MatrixXd C0E(3,3);
-    VectorXd ERM = VectorXd::Zero(3);
-    
-    T0E = T_IE;
-    P0E = jointToPosition(q);
-    C0E = jointToRotMat(q);
-    ERM = rotToEuler(C0E)*180/PI;
+//    T_I0 = getTransformI0();
+//    T_01 = jointToTransform01(q, direction);
+//    T_12 = jointToTransform12(q);
+//    T_23 = jointToTransform23(q);
+//    T_34 = jointToTransform34(q);
+//    T_45 = jointToTransform45(q);
+//    T_56 = jointToTransform56(q);
+//    T_6E = getTransform6E();
+//    
+//    T_IE = T_I0 * T_01 * T_12 * T_23 * T_34 * T_45 * T_56 * T_6E;
+//
+////    std::cout << "T_01 = " << T_01 << endl;
+////    std::cout << "T_IE = " << T_IE << endl;
+//    
+//    
+//    // Forward Kinematics
+//    // Practice_2
+//    MatrixXd T0E(4,4);
+//    VectorXd P0E = VectorXd::Zero(3);
+//    MatrixXd C0E(3,3);
+//    VectorXd ERM = VectorXd::Zero(3);
+//    
+//    T0E = T_IE;
+//    P0E = jointToPosition(q);
+//    C0E = jointToRotMat(q);
+//    ERM = rotToEuler(C0E)*180/PI;
     
             
 //    std::cout << "T0E =" << std::endl << T0E << std::endl;   
@@ -662,56 +728,56 @@ void Practice()
 //    std::cout << "ERM =" << std::endl << ERM << std::endl;      
     
     
-    //Practice_3
-    MatrixXd Jp(3,6);
-    Jp = jointToPosJac(q);
-
-    MatrixXd JR(3,6);
-    JR = jointToRotJac(q);
-    
-    //Practice_4
-    MatrixXd J(6,6);
-    J << jointToPosJac(q),\
-         jointToRotJac(q);
-                   
-    MatrixXd pinvj;
-    pinvj = pseudoInverseMat(J, 0.0);
-
-    MatrixXd invj;
-    invj = J.inverse();
-
-    std::cout<<" Test, Inverse"<<std::endl;
-    std::cout<< invj <<std::endl;
-    std::cout<<std::endl;
-    
-
-    std::cout<<" Test, PseudoInverse"<<std::endl;
-    std::cout<< pinvj <<std::endl;
-    std::cout<<std::endl;
-    
-    VectorXd q_des(6),q_init(6);
-    MatrixXd C_err(3,3), C_des(3,3), C_init(3,3);
-    
-    q_des = q; 
-    q_init = 0.5*q_des;
-    C_des = jointToRotMat(q_des);
-    C_init = jointToRotMat(q_init);
-    C_err = C_des * C_init.transpose();
-
-    VectorXd dph(3);
-
-    dph = rotMatToRotVec(C_err);
-    
-    std::cout<<" Test, Rotational Vector"<<std::endl;
-    std::cout<< dph <<std::endl;
-    std::cout<<std::endl;
-    
-    //Practice_5
-    VectorXd r_des = VectorXd::Zero(3);
-    VectorXd q_cal = VectorXd::Zero(6);
-        // q = [10;20;30;40;50;60]*pi/180;
-        r_des = jointToPosition(q);
-        C_des = jointToRotMat(q);
+//    //Practice_3
+//    MatrixXd Jp(3,6);
+//    Jp = jointToPosJac(q);
+//
+//    MatrixXd JR(3,6);
+//    JR = jointToRotJac(q);
+//    
+//    //Practice_4
+//    MatrixXd J(6,6);
+//    J << jointToPosJac(q),\
+//         jointToRotJac(q);
+//                   
+//    MatrixXd pinvj;
+//    pinvj = pseudoInverseMat(J, 0.0);
+//
+//    MatrixXd invj;
+//    invj = J.inverse();
+//
+//    std::cout<<" Test, Inverse"<<std::endl;
+//    std::cout<< invj <<std::endl;
+//    std::cout<<std::endl;
+//    
+//
+//    std::cout<<" Test, PseudoInverse"<<std::endl;
+//    std::cout<< pinvj <<std::endl;
+//    std::cout<<std::endl;
+//    
+//    VectorXd q_des(6),q_init(6);
+//    MatrixXd C_err(3,3), C_des(3,3), C_init(3,3);
+//    
+//    q_des = q; 
+//    q_init = 0.5*q_des;
+//    C_des = jointToRotMat(q_des);
+//    C_init = jointToRotMat(q_init);
+//    C_err = C_des * C_init.transpose();
+//
+//    VectorXd dph(3);
+//
+//    dph = rotMatToRotVec(C_err);
+//    
+//    std::cout<<" Test, Rotational Vector"<<std::endl;
+//    std::cout<< dph <<std::endl;
+//    std::cout<<std::endl;
+//    
+//    //Practice_5
+//    VectorXd r_des = VectorXd::Zero(3);
+//    VectorXd q_cal = VectorXd::Zero(6);
+//        // q = [10;20;30;40;50;60]*pi/180;
+//        r_des = jointToPosition(q);
+//        C_des = jointToRotMat(q);
         //q_cal = inverseKinematics(r_des, C_des, q*0.5, 0.001);
         
     //TEST Inv.k
@@ -764,7 +830,7 @@ void gazebo::rok3_plugin::Load(physics::ModelPtr _model, sdf::ElementPtr /*_sdf*
 
     //* model.urdf file based model data input to [Model* rok3_model] for using RBDL
     Model* rok3_model = new Model();
-    Addons::URDFReadFromFile("/home/jun/.gazebo/models/rok3_model/urdf/rok3_model.urdf", rok3_model, true, true);
+    Addons::URDFReadFromFile("/home/cho/.gazebo/models/rok3_model/urdf/rok3_model.urdf", rok3_model, true, true);
     //↑↑↑ Check File Path ↑↑↑
     nDoF = rok3_model->dof_count - 6; // Get degrees of freedom, except position and orientation of the robot
     joint = new ROBO_JOINT[nDoF]; // Generation joint variables struct
@@ -776,7 +842,7 @@ void gazebo::rok3_plugin::Load(physics::ModelPtr _model, sdf::ElementPtr /*_sdf*
     
 
     //* setting for getting dt
-    last_update_time = model->GetWorld()->GetSimTime();
+    last_update_time = model->GetWorld()->SimTime();
     update_connection = event::Events::ConnectWorldUpdateBegin(boost::bind(&rok3_plugin::UpdateAlgorithm, this)); //Time interrupt funtion : UpdateAlgorithm 
     
     
@@ -795,7 +861,7 @@ void gazebo::rok3_plugin::UpdateAlgorithm()
      */
 
     //* UPDATE TIME : 1ms
-    common::Time current_time = model->GetWorld()->GetSimTime();
+    common::Time current_time = model->GetWorld()->SimTime();
     dt = current_time.Double() - last_update_time.Double();
     //    cout << "dt:" << dt << endl;
     time = time + dt;
@@ -816,69 +882,466 @@ void gazebo::rok3_plugin::UpdateAlgorithm()
 //    joint[LAP].targetRadian = 50*3.14/180;
 //    joint[LAR].targetRadian = 60*3.14/180;
     
-        
-    if(time == 0.001){    
-        //Inv_k   
-   
-         q_init << 0, 0, -10, 20,-10, 0;
-         q_init = q_init*PI/180;
-        
-         r_des << 0,0.105,-0.55;
-         C_des = MatrixXd::Identity(3,3);
+    // flight time
+    f_time << 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0;
+    
+ //std::cout << "r_time :" << r_time << std::endl;      
 
-         q_des = inverseKinematics(r_des, C_des, q_init, 0.001);
-        //std::cout << "q_des :" << q_cal << std::endl;
-        //std::cout << "q_init :" << q_init << std::endl;
-    }
-    else if(time == 5){    
+   if(r_time == 23.001 ){
+       r_time = 0.001;
+       N = 0;
+   } 
+    
+ 
+    if(time < 5.001){
+        // Walk_ready 
+        if(time == 0.001){    
 
-        //Inv_k
-        MatrixXd tmp_m = MatrixXd::Identity(3,3);
+         q_init_L << 0, 0, -10, 20,-10, 0;
+         q_init_R << 0, 0, -10, 20,-10, 0;
+         
+         q_init_L = q_init_L*PI/180;
+         q_init_R = q_init_R*PI/180;
+         
+         r_des_L << 0, 0.105, -0.7;
+         r_des_R << 0,-0.105, -0.7;
+         
+         C_des_L = MatrixXd::Identity(3,3);
+         C_des_R = MatrixXd::Identity(3,3);
+
+         q_des_L = inverseKinematics(r_des_L, C_des_L, q_init_L, 0.001,Left);
+         q_des_R = inverseKinematics(r_des_R, C_des_R, q_init_R, 0.001,Right);
+         
+        }
+                
+        std::cout << "time :" << time << std::endl;
+
+        joint[LHY].targetRadian = func_1_cos(time,q_init_L[0],q_des_L[0],5);
+        joint[LHR].targetRadian = func_1_cos(time,q_init_L[1],q_des_L[1],5);
+        joint[LHP].targetRadian = func_1_cos(time,q_init_L[2],q_des_L[2],5);
+        joint[LKN].targetRadian = func_1_cos(time,q_init_L[3],q_des_L[3],5);
+        joint[LAP].targetRadian = func_1_cos(time,q_init_L[4],q_des_L[4],5);
+        joint[LAR].targetRadian = func_1_cos(time,q_init_L[5],q_des_L[5],5);
         
-        float qq = 90*PI/180;
-        q_init = q_des;  
-        r_des << 0,0.105,-0.55;
+        joint[RHY].targetRadian = func_1_cos(time,q_init_R[0],q_des_R[0],5);
+        joint[RHR].targetRadian = func_1_cos(time,q_init_R[1],q_des_R[1],5);
+        joint[RHP].targetRadian = func_1_cos(time,q_init_R[2],q_des_R[2],5);
+        joint[RKN].targetRadian = func_1_cos(time,q_init_R[3],q_des_R[3],5);
+        joint[RAP].targetRadian = func_1_cos(time,q_init_R[4],q_des_R[4],5);
+        joint[RAR].targetRadian = func_1_cos(time,q_init_R[5],q_des_R[5],5);
+        
+        if(time == 5){r_time = 0.001;
+                      ph = 1;}
+            //std::cout << "s_time :" << s_time << std::endl;
+    } 
+    else{ //if(r_time<= 0.001+f_time[0]+f_time[1]+f_time[2] + f_time[3]+ f_time[4]+ f_time[5]+ f_time[6])  {
+      if(ph<4 || ph>6){  
+        if(r_time == 0.001){    
+        //move base right foot 
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0.21, -0.7;
+        tar_pos_R << 0, 0, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);      
+        
+        //std::cout << "test_1" <<  std::endl;
+    }else if(r_time == 0.001 +f_time[0]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0.05, 0.21, -0.6;
+        tar_pos_R << 0, 0, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        
+        //std::cout << "==============test==================_2" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0.1, 0.21, -0.7;
+        tar_pos_R << 0, 0, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        //std::cout << "test_2" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1] + f_time[2]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0.05, 0.105, -0.7;
+        tar_pos_R << -0.05, -0.105, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        //std::cout << "test_2" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]+f_time[2] + f_time[3]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0, -0.7;
+        tar_pos_R << -0.1, -0.21, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        std::cout << "test_6=================" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]+f_time[2] + f_time[3]+ f_time[4]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0, -0.7;
+        tar_pos_R << -0.05, -0.21, -0.6;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        //std::cout << "test_2" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]+f_time[2]+f_time[3]+f_time[4]+f_time[5]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0, -0.7;
+        tar_pos_R << 0, -0.21, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        std::cout << "test_7====================" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]+f_time[2] + f_time[3]+ f_time[4]+f_time[5]+f_time[6]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0.105, -0.7;
+        tar_pos_R << 0, -0.105, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        //std::cout << "test_2" <<  std::endl;
+        
+        N += 1;
+        ph = 2;
+        if (ph == 2){ph = 3;}
+        else if (ph == 3){ ph = 4;}
+        }
+    }else{    
+        if (r_time == 0.001){
+         //time
+         s_time = 0;
+        
+         // Update
+         q_init_L = q_des_L;
+         q_init_R = q_des_R;
+            
+         r_init_L = r_des_L;
+         r_init_R = r_des_R;
+          
+         //Target pose
+         tar_pos_L << 0, 0.21, -0.7;
+         tar_pos_R << 0, 0, -0.7;
+        
+         
+         //Desire          
+         C_des_L = MatrixXd::Identity(3,3);
+         C_des_R = MatrixXd::Identity(3,3);
+        }else if(r_time == 0.001 +f_time[0]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0.05, 0.21, -0.6;
+        tar_pos_R << 0, 0, -0.7;
+          
+        
+        float qq = 30*PI/180;
+        MatrixXd tmp_m = MatrixXd::Identity(3,3);     
         
     
          tmp_m(0,0) = cos(qq);   tmp_m(0,1) = -sin(qq);      tmp_m(0,2) = 0;        
          tmp_m(1,0) = sin(qq);   tmp_m(1,1) = cos(qq);       tmp_m(1,2) = 0;        
-         tmp_m(2,0) = 0;         tmp_m(2,1) = 0;             tmp_m(2,2) = 1;        
-     
-  
-         C_des =  tmp_m;
-
-         q_des = inverseKinematics(r_des, C_des, q_init, 0.001);
-         //std::cout << "q_des :" << q_cal << std::endl;
-         //std::cout << "q_init :" << q_init << std::endl;
-    }        
+         tmp_m(2,0) = 0;         tmp_m(2,1) = 0;             tmp_m(2,2) = 1;  
+         
+        //Desire          
+        C_des_L = tmp_m;
+        C_des_R = MatrixXd::Identity(3,3);
         
+        //std::cout << "==============test==================_2" <<  std::endl;
         
-
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0.1, 0.21, -0.7;
+        tar_pos_R << 0, 0, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        //std::cout << "test_2" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1] + f_time[2]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0.05, 0.105, -0.7;
+        tar_pos_R << -0.05, -0.105, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        //std::cout << "test_2" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]+f_time[2] + f_time[3]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0, -0.7;
+        tar_pos_R << -0.1, -0.21, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        std::cout << "test_6=================" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]+f_time[2] + f_time[3]+ f_time[4]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0, -0.7;
+        tar_pos_R << -0.05, -0.21, -0.6;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        //std::cout << "test_2" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]+f_time[2]+f_time[3]+f_time[4]+f_time[5]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0, -0.7;
+        tar_pos_R << 0, -0.21, -0.7;
+        
+        float qq = 30*PI/180;
+        MatrixXd tmp_m = MatrixXd::Identity(3,3);     
+        
     
-    
-    std::cout << "q_des :" << q_des << std::endl;
-    if(time < 5){
-        std::cout << "time :" << time << std::endl;
-        joint[LHY].targetRadian = func_1_cos(time,q_init[0],q_des[0],5);
-        joint[LHR].targetRadian = func_1_cos(time,q_init[1],q_des[1],5);
-        joint[LHP].targetRadian = func_1_cos(time,q_init[2],q_des[2],5);
-        joint[LKN].targetRadian = func_1_cos(time,q_init[3],q_des[3],5);
-        joint[LAP].targetRadian = func_1_cos(time,q_init[4],q_des[4],5);
-        joint[LAR].targetRadian = func_1_cos(time,q_init[5],q_des[5],5);
+         tmp_m(0,0) = cos(qq);   tmp_m(0,1) = -sin(qq);      tmp_m(0,2) = 0;        
+         tmp_m(1,0) = sin(qq);   tmp_m(1,1) = cos(qq);       tmp_m(1,2) = 0;        
+         tmp_m(2,0) = 0;         tmp_m(2,1) = 0;             tmp_m(2,2) = 1;      
         
-    } 
-    else if(time <= 10){
-        double time_2 = time - 5.0;
-        std::cout << "time_2 :" << time_2 << std::endl;
-        joint[LHY].targetRadian = func_1_cos(time_2,q_init[0],q_des[0],5);
-        joint[LHR].targetRadian = func_1_cos(time_2,q_init[1],q_des[1],5);
-        joint[LHP].targetRadian = func_1_cos(time_2,q_init[2],q_des[2],5);
-        joint[LKN].targetRadian = func_1_cos(time_2,q_init[3],q_des[3],5);
-        joint[LAP].targetRadian = func_1_cos(time_2,q_init[4],q_des[4],5);
-        joint[LAR].targetRadian = func_1_cos(time_2,q_init[5],q_des[5],5);
+        //Desire          
+        C_des_L = tmp_m;
+        C_des_R = MatrixXd::Identity(3,3);
+        //std::cout << "test_7====================" <<  std::endl;
+        
+        N += 1;
+        
+    }else if(r_time == 0.001+f_time[0]+f_time[1]+f_time[2] + f_time[3]+ f_time[4]+f_time[5]+f_time[6]){    
+        //time
+        s_time = 0;
+        
+        // Update
+        q_init_L = q_des_L;
+        q_init_R = q_des_R;
+            
+        r_init_L = r_des_L;
+        r_init_R = r_des_R;
+          
+        //Target pose
+        tar_pos_L << 0, 0.105, -0.7;
+        tar_pos_R << 0, -0.105, -0.7;
+          
+        //Desire          
+        C_des_L = MatrixXd::Identity(3,3);
+        C_des_R = MatrixXd::Identity(3,3);
+        
+        if(ph == 4){ph = 5;}
+            else if(ph==5){ph = 6;}
+            else if(ph==6){ph = 7;}
+     }
+    }
+        
+        r_des_L[X] = cosWave(tar_pos_L[X] - r_init_L[X], f_time[N], s_time , r_init_L[X]);
+        r_des_L[Y] = cosWave(tar_pos_L[Y] - r_init_L[Y], f_time[N], s_time , r_init_L[Y]);
+        r_des_L[Z] = cosWave(tar_pos_L[Z] - r_init_L[Z], f_time[N], s_time , r_init_L[Z]);
+      
+        r_des_R[X] = cosWave(tar_pos_R[X] - r_init_R[X], f_time[N], s_time , r_init_R[X]);
+        r_des_R[Y] = cosWave(tar_pos_R[Y] - r_init_R[Y], f_time[N], s_time , r_init_R[Y]);
+        r_des_R[Z] = cosWave(tar_pos_R[Z] - r_init_R[Z], f_time[N], s_time , r_init_R[Z]);
+
+        q_des_L = inverseKinematics(r_des_L, C_des_L, q_init_L, 0.001,Left);
+        q_des_R = inverseKinematics(r_des_R, C_des_R, q_init_R, 0.001,Right);
+                 
+        joint[LHY].targetRadian = q_des_L[0];
+        joint[LHR].targetRadian = q_des_L[1];
+        joint[LHP].targetRadian = q_des_L[2];
+        joint[LKN].targetRadian = q_des_L[3];
+        joint[LAP].targetRadian = q_des_L[4];
+        joint[LAR].targetRadian = q_des_L[5];
+         
+        joint[RHY].targetRadian = q_des_R[0];
+        joint[RHR].targetRadian = q_des_R[1];
+        joint[RHP].targetRadian = q_des_R[2];
+        joint[RKN].targetRadian = q_des_R[3];
+        joint[RAP].targetRadian = q_des_R[4];
+        joint[RAR].targetRadian = q_des_R[5];
+         
+        s_time += 0.001;
+        r_time += 0.001;
+//        std::cout << "r_time :" << r_time << std::endl;
+//        std::cout << "f_time :" << f_time[N] <<  std::endl;
+        
         
     }
-    
+
     
     //* Joint Controller
     jointController();
@@ -947,21 +1410,21 @@ void gazebo::rok3_plugin::GetjointData()
      * encoder unit : [rad] and unit conversion to [deg]
      * velocity unit : [rad/s] and unit conversion to [rpm]
      */
-    joint[LHY].actualRadian = L_Hip_yaw_joint->GetAngle(0).Radian();
-    joint[LHR].actualRadian = L_Hip_roll_joint->GetAngle(0).Radian();
-    joint[LHP].actualRadian = L_Hip_pitch_joint->GetAngle(0).Radian();
-    joint[LKN].actualRadian = L_Knee_joint->GetAngle(0).Radian();
-    joint[LAP].actualRadian = L_Ankle_pitch_joint->GetAngle(0).Radian();
-    joint[LAR].actualRadian = L_Ankle_roll_joint->GetAngle(0).Radian();
+    joint[LHY].actualRadian = L_Hip_yaw_joint->Position(0);
+    joint[LHR].actualRadian = L_Hip_roll_joint->Position(0);
+    joint[LHP].actualRadian = L_Hip_pitch_joint->Position(0);
+    joint[LKN].actualRadian = L_Knee_joint->Position(0);
+    joint[LAP].actualRadian = L_Ankle_pitch_joint->Position(0);
+    joint[LAR].actualRadian = L_Ankle_roll_joint->Position(0);
 
-    joint[RHY].actualRadian = R_Hip_yaw_joint->GetAngle(0).Radian();
-    joint[RHR].actualRadian = R_Hip_roll_joint->GetAngle(0).Radian();
-    joint[RHP].actualRadian = R_Hip_pitch_joint->GetAngle(0).Radian();
-    joint[RKN].actualRadian = R_Knee_joint->GetAngle(0).Radian();
-    joint[RAP].actualRadian = R_Ankle_pitch_joint->GetAngle(0).Radian();
-    joint[RAR].actualRadian = R_Ankle_roll_joint->GetAngle(0).Radian();
+    joint[RHY].actualRadian = R_Hip_yaw_joint->Position(0);
+    joint[RHR].actualRadian = R_Hip_roll_joint->Position(0);
+    joint[RHP].actualRadian = R_Hip_pitch_joint->Position(0);
+    joint[RKN].actualRadian = R_Knee_joint->Position(0);
+    joint[RAP].actualRadian = R_Ankle_pitch_joint->Position(0);
+    joint[RAR].actualRadian = R_Ankle_roll_joint->Position(0);
 
-    joint[WST].actualRadian = torso_joint->GetAngle(0).Radian();
+    joint[WST].actualRadian = torso_joint->Position(0);
 
     for (int j = 0; j < nDoF; j++) {
         joint[j].actualDegree = joint[j].actualRadian*R2D;
@@ -1017,9 +1480,9 @@ void gazebo::rok3_plugin::SetJointPIDgain()
      * Set each joint PID gain for joint control
      */
     joint[LHY].Kp = 2000;
-    joint[LHR].Kp = 9000;
-    joint[LHP].Kp = 2000;
-    joint[LKN].Kp = 5000;
+    joint[LHR].Kp = 9000-4000;
+    joint[LHP].Kp = 2000+4000;
+    joint[LKN].Kp = 5000+4000;
     joint[LAP].Kp = 3000;
     joint[LAR].Kp = 3000;
 
